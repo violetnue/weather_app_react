@@ -1,6 +1,8 @@
 import React from 'react';
 import './App.scss';
+
 import { WeatherData } from './components/WeatherData'
+import { StatusData } from './components/StatusData'
 
 class App extends React.Component {
     constructor(props) {
@@ -18,16 +20,22 @@ class App extends React.Component {
     weatherInit = () => {
 
         const success = (position) => {
+            this.setState({status: 'fetching'});
+            localStorage.setItem('location-allowed', true);
             this.getWeatherData(position.coords.latitude, position.coords.longitude);
         }
 
         const error = () => {
+            this.setState({status: 'unable'});
+            localStorage.removeItem('location-allowed');
             alert('Unable to retrieve location.');
         }
 
         if (navigator.geolocation) {
+            this.setState({status: 'fetching'});
             navigator.geolocation.getCurrentPosition(success, error);
         } else {
+            this.setState({status: 'unsupported'});
             alert('Your browser does not support location tracking, or permission is denied.');
         }
     }
@@ -47,6 +55,7 @@ class App extends React.Component {
                     const { speed, deg } = result.wind;
 
                     this.setState({
+                        status: 'success',
                         isLoaded: true,
                         weatherData: {
                             name,
@@ -72,8 +81,35 @@ class App extends React.Component {
             );
     }
 
-    componentDidMount() {
+    onClick = () => {
         this.weatherInit();
+    }
+
+    returnActiveView = (status) => {
+        switch(status) {
+            case 'init':
+                return(
+                    <button
+                        className='btn-main'
+                        onClick={this.onClick}
+                    >
+                        Get My Location
+                    </button>
+                );
+            case 'success':
+                return <WeatherData data={this.state.weatherData} />;
+            default:
+                return <StatusData status={status} />;
+        }
+    }
+
+
+    componentDidMount() {
+        if(localStorage.getItem('location-allowed')) {
+            this.weatherInit();
+        } else {
+            return;
+        }
     }
 
     componentWillUnmount() {
@@ -84,7 +120,7 @@ class App extends React.Component {
         return (
             <div className='App'>
                 <div className='container'>
-                    <WeatherData />
+                    {this.returnActiveView(this.state.status)}
                 </div>
             </div>
         );
